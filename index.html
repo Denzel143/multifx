@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ESP32-S3 AI Web Pedalboard</title>
   <style>
     /* Global Styles */
@@ -50,6 +50,7 @@
       border: 2px solid #111; position: relative; cursor: pointer;
       box-shadow: inset -2px -2px 5px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.8);
       transform: rotate(-135deg);
+      touch-action: none; /* MENCEGAH SCROLL LAYAR SAAT MENYENTUH KNOB */
     }
     .knob .indicator {
       width: 3px; height: 14px; background: white; border-radius: 2px;
@@ -88,7 +89,7 @@
     /* Responsiveness untuk Layar Kecil */
     @media (max-width: 1000px) {
       .main-layout { flex-direction: column; align-items: center; }
-      .ai-panel { flex: unset; width: 100%; max-width: 600px; position: relative; top: 0; }
+      .ai-panel { flex: unset; width: 100%; max-width: 600px; position: relative; top: 0; box-sizing: border-box; }
     }
   </style>
 </head>
@@ -181,7 +182,7 @@
     // =======================================================
     // CONFIGURATION (Hardcoded API Key)
     // =======================================================
-    const GEMINI_API_KEY = "AIzaSyCdi-vj6CmMPeiyyJudvVietlA7Yz8O-To"; 
+    const GEMINI_API_KEY = "AIzaSyCcsMOhwDbZl0MrUYYXId78eA4bQa_DoGg"; 
 
     // =======================================================
     // BLE LOGIC
@@ -232,7 +233,7 @@
     }
 
     // =======================================================
-    // UI LOGIC (Knobs & Switches)
+    // UI LOGIC (Knobs & Switches - MOBILE & DESKTOP)
     // =======================================================
     function toggleFxManual(fxId) {
       fxStates[fxId] = !fxStates[fxId];
@@ -257,18 +258,19 @@
     }
 
     let activeKnob = null, startY = 0, currentVal = 0;
-    document.querySelectorAll('.knob').forEach(knob => {
-      updateKnobVisual(knob, parseFloat(knob.getAttribute('data-val')));
-      knob.addEventListener('mousedown', (e) => {
-        activeKnob = knob; startY = e.clientY;
-        currentVal = parseFloat(knob.getAttribute('data-val'));
-        document.body.style.cursor = 'ns-resize';
-      });
-    });
 
-    window.addEventListener('mousemove', (e) => {
+    // Fungsi Mulai Interaksi
+    function startInteraction(knob, yPos) {
+      activeKnob = knob; 
+      startY = yPos;
+      currentVal = parseFloat(knob.getAttribute('data-val'));
+      document.body.style.cursor = 'ns-resize';
+    }
+
+    // Fungsi Bergerak
+    function moveInteraction(yPos) {
       if (!activeKnob) return;
-      let deltaY = startY - e.clientY;
+      let deltaY = startY - yPos;
       let min = parseFloat(activeKnob.getAttribute('data-min'));
       let max = parseFloat(activeKnob.getAttribute('data-max'));
       let step = (max - min) / 200;
@@ -276,9 +278,40 @@
 
       updateKnobVisual(activeKnob, newVal);
       sendCommand(activeKnob.getAttribute('data-cmd'), newVal.toFixed(2));
+    }
+
+    // Fungsi Selesai Interaksi
+    function endInteraction() { 
+      activeKnob = null; 
+      document.body.style.cursor = 'default'; 
+    }
+
+    // Pasang Event Listeners ke semua Knob
+    document.querySelectorAll('.knob').forEach(knob => {
+      updateKnobVisual(knob, parseFloat(knob.getAttribute('data-val')));
+      
+      // Event Mouse (Desktop)
+      knob.addEventListener('mousedown', (e) => startInteraction(knob, e.clientY));
+      
+      // Event Touch (Mobile)
+      knob.addEventListener('touchstart', (e) => {
+        // e.preventDefault() tidak selalu diperlukan karena ada CSS touch-action, 
+        // tapi baik untuk mencegah perilaku default spesifik di beberapa browser.
+        startInteraction(knob, e.touches[0].clientY);
+      }, {passive: false});
     });
 
-    window.addEventListener('mouseup', () => { activeKnob = null; document.body.style.cursor = 'default'; });
+    // Global Listeners
+    window.addEventListener('mousemove', (e) => moveInteraction(e.clientY));
+    window.addEventListener('mouseup', endInteraction);
+
+    window.addEventListener('touchmove', (e) => {
+      if (activeKnob) {
+        e.preventDefault(); // Mengunci scroll saat knob sedang diputar
+        moveInteraction(e.touches[0].clientY);
+      }
+    }, {passive: false});
+    window.addEventListener('touchend', endInteraction);
 
     function setKnobValue(cmd, val) {
       let knob = document.getElementById("knob_" + cmd);
