@@ -3,423 +3,414 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ESP32-S3 AI Web Pedalboard</title>
+  <title>ESP32-S3 AI Web Pedalboard & Tuner</title>
   <style>
-    /* Global Styles */
-    body {
-      background-color: #222; color: white; font-family: 'Courier New', monospace;
-      margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center;
-    }
-    h1 { margin-bottom: 20px; text-align: center; }
+    body { background-color: #1a1a1a; color: white; font-family: 'Courier New', monospace; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    h1 { margin-bottom: 5px; text-align: center; }
+    #status { color: #aaa; margin-bottom: 20px; font-size: 14px; }
     
-    #connectBtn {
-      padding: 12px 30px; font-size: 16px; font-weight: bold; background: #00ff88; color: #111;
-      border: none; border-radius: 5px; cursor: pointer; margin-bottom: 30px; transition: 0.2s;
-    }
-    #connectBtn:hover { background: #00cc6a; }
+    .btn-nav { padding: 12px 30px; font-size: 16px; font-weight: bold; background: #00ff88; color: #111; border: none; border-radius: 5px; cursor: pointer; margin-bottom: 10px; transition: 0.2s; }
+    .btn-nav:hover { background: #00cc6a; transform: scale(1.05); }
 
-    /* Layout Utama: Kiri (Pedal) & Kanan (AI) */
-    .main-layout {
-      display: flex; flex-direction: row; gap: 40px; width: 100%; max-width: 1400px;
-      justify-content: center; align-items: flex-start;
-    }
+    #effectsPage, #tunerPage { width: 100%; max-width: 1400px; display: flex; flex-direction: column; align-items: center; }
 
-    /* Area Pedalboard */
-    .pedalboard { 
-      display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; flex: 1;
-    }
-    .pedal {
-      width: 200px; padding: 20px; border-radius: 10px; border: 3px solid #111;
-      box-shadow: 5px 5px 15px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center;
-      position: relative; transition: 0.3s;
-    }
-    .pedal h3 { margin: 0 0 20px 0; color: #111; text-align: center; text-transform: uppercase; font-weight: 900; }
+    .master-vol-container { width: 100%; max-width: 600px; background: #2a2a2a; padding: 15px 30px; border-radius: 10px; border: 2px solid #444; display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px; box-sizing: border-box; }
+    .master-vol-container label { font-weight: bold; font-size: 16px; color: #00ff88; }
+    #mstVol { width: 60%; cursor: pointer; }
+
+    .main-layout { display: flex; flex-direction: row; gap: 40px; width: 100%; justify-content: center; align-items: flex-start; }
+
+    /* --- LAYOUT KATEGORI PEDAL --- */
+    .pedalboard { display: flex; flex-direction: column; gap: 30px; flex: 1; align-items: center; width: 100%; }
+    .category-section { width: 100%; background: #222; padding: 20px; border-radius: 12px; border: 2px solid #333; box-sizing: border-box; box-shadow: inset 0 0 20px rgba(0,0,0,0.5); }
+    .category-title { margin: 0 0 20px 0; color: #eee; font-size: 18px; text-transform: uppercase; letter-spacing: 2px; border-left: 5px solid #00ff88; padding-left: 10px; }
+    .category-pedals { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; }
+
+    .pedal { width: 180px; padding: 15px; border-radius: 10px; border: 3px solid #111; box-shadow: 5px 5px 15px rgba(0,0,0,0.7); display: flex; flex-direction: column; align-items: center; position: relative; }
+    .pedal h3 { margin: 0 0 15px 0; color: #111; text-align: center; text-transform: uppercase; font-weight: 900; font-size: 14px; }
     
-    /* Warna Pedal */
-    .p-od { background: #ffcc00; } .p-dist { background: #ff3333; }
-    .p-cho { background: #33ccff; } .p-flg { background: #cc33ff; }
-    .p-dly { background: #33ff66; } .p-rev { background: #cccccc; }
+    /* Warna Kategori Efek */
+    .p-od { background: #ffcc00; } .p-dist { background: #ff5500; } .p-fuz { background: #cc00ff; } /* Drives */
+    .p-cho { background: #33ccff; } .p-flg { background: #aa55ff; } .p-phs { background: #ffaa00; } .p-trm { background: #55ff55; } /* Mod */
+    .p-vib { background: #00ffcc; } .p-rot { background: #ff55aa; } .p-uni { background: #cccc00; } .p-awh { background: #55aaff; } .p-whm { background: #ff0055; }
+    .p-dly { background: #33ff66; } .p-eco { background: #88cc88; } .p-rev { background: #cccccc; } /* Time */
 
-    .knobs-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 30px; }
+    .knobs-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-bottom: 30px; }
     .knob-wrapper { display: flex; flex-direction: column; align-items: center; }
-    .knob-label { font-size: 11px; font-weight: bold; color: #111; margin-top: 5px; text-transform: uppercase;}
+    .knob-label { font-size: 10px; font-weight: bold; color: #111; margin-top: 5px; text-transform: uppercase;}
     
-    /* Knob Analog */
-    .knob {
-      width: 45px; height: 45px; border-radius: 50%; background: #333;
-      border: 2px solid #111; position: relative; cursor: pointer;
-      box-shadow: inset -2px -2px 5px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.8);
-      transform: rotate(-135deg);
-      touch-action: none; /* MENCEGAH SCROLL LAYAR SAAT MENYENTUH KNOB */
-    }
-    .knob .indicator {
-      width: 3px; height: 14px; background: white; border-radius: 2px;
-      position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
-    }
+    .knob { width: 35px; height: 35px; border-radius: 50%; background: #333; border: 2px solid #111; position: relative; cursor: pointer; box-shadow: inset -2px -2px 5px rgba(255,255,255,0.2), 2px 2px 5px rgba(0,0,0,0.8); transform: rotate(-135deg); touch-action: none; }
+    .knob .indicator { width: 2px; height: 10px; background: white; border-radius: 2px; position: absolute; top: 4px; left: 50%; transform: translateX(-50%); }
 
-    .stomp-switch {
-      width: 45px; height: 45px; border-radius: 50%; background: #e0e0e0;
-      border: 4px solid #888; box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 5px 10px rgba(0,0,0,0.5);
-      cursor: pointer; transition: 0.1s; position: absolute; bottom: 20px;
-    }
-    .stomp-switch:active { transform: translateY(4px); box-shadow: inset 0 0 15px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.5); }
-    .led { width: 10px; height: 10px; border-radius: 50%; background: #550000; border: 2px solid #222; margin-bottom: 50px; }
+    .stomp-switch { width: 40px; height: 40px; border-radius: 50%; background: #e0e0e0; border: 4px solid #888; box-shadow: inset 0 0 10px rgba(0,0,0,0.5), 0 5px 10px rgba(0,0,0,0.5); cursor: pointer; position: absolute; bottom: 15px; }
+    .stomp-switch:active { transform: translateY(4px); }
+    .led { width: 8px; height: 8px; border-radius: 50%; background: #550000; border: 2px solid #222; margin-bottom: 45px; }
     .led.active { background: #ff0000; box-shadow: 0 0 15px #ff0000; }
 
-    /* Area AI (Sisi Kanan) */
-    .ai-panel {
-      flex: 0 0 350px; background: #333; padding: 25px; border-radius: 10px; 
-      border: 2px solid #555; position: sticky; top: 20px; display: flex; flex-direction: column; gap: 15px;
-    }
+    .right-panel-wrapper { flex: 0 0 400px; display: flex; flex-direction: column; gap: 20px; position: sticky; top: 20px;}
+    .ai-panel { background: #333; padding: 25px; border-radius: 10px; border: 2px solid #555; display: flex; flex-direction: column; gap: 15px; }
     .ai-panel h2 { margin: 0; font-size: 18px; color: #00ff88; text-transform: uppercase; border-bottom: 1px solid #555; padding-bottom: 10px;}
     .status-text { font-size: 13px; color: #aaa; min-height: 40px; }
-    
     .input-row { display: flex; gap: 10px; width: 100%; }
-    .input-row input {
-      flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #777; 
-      background: #111; color: #0f0; font-family: inherit; font-size: 14px;
-    }
-    .input-row button {
-      padding: 12px 20px; font-size: 14px; font-weight: bold; border: none; 
-      border-radius: 5px; cursor: pointer; transition: 0.2s; background: #ff0055; color: white;
-    }
-    .input-row button:disabled { background: #555; cursor: not-allowed; }
-    .input-row button:hover:not(:disabled) { background: #cc0044; }
+    .input-row input { flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #777; background: #111; color: #0f0; font-family: inherit;}
+    .input-row button { padding: 12px 20px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; background: #ff0055; color: white;}
+    
+    .eq-panel { background: #2a2a2a; padding: 20px; border-radius: 10px; border: 2px solid #555;}
+    .eq-panel h3 { margin: 0 0 15px 0; color: #00ccff; text-align: center; text-transform: uppercase;}
+    .eq-sliders { display: flex; justify-content: space-between; align-items: flex-end; height: 150px; padding-top: 10px;}
+    .eq-band { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%;}
+    .eq-slider { -webkit-appearance: slider-vertical; writing-mode: bt-lr; width: 15px; height: 110px; cursor: pointer;}
+    .eq-label { font-size: 9px; color: #ccc; margin-top: 8px; font-weight: bold;}
+    .eq-val-display { font-size: 9px; color: #00ff88; margin-bottom: 5px; }
 
-    /* Responsiveness untuk Layar Kecil */
-    @media (max-width: 1000px) {
-      .main-layout { flex-direction: column; align-items: center; }
-      .ai-panel { flex: unset; width: 100%; max-width: 600px; position: relative; top: 0; box-sizing: border-box; }
-    }
+    /* Tuner CSS */
+    .tuner-container { background: #222; border: 4px solid #333; border-radius: 15px; padding: 20px; width: 100%; max-width: 500px; text-align: center; margin-top: 20px; }
+    #noteDisplay { font-size: 6rem; font-weight: bold; color: #ff3333; margin: 10px 0; }
+    #freqDisplay { font-size: 1.5rem; color: #888; margin-bottom: 30px; }
+    .gauge-wrapper { position: relative; width: 300px; height: 150px; margin: 0 auto 20px auto; overflow: hidden; border-bottom: 3px solid #444;}
+    .gauge-arc { position: absolute; top: 0; left: 0; width: 292px; height: 292px; border: 4px dashed #444; border-radius: 50%;}
+    .gauge-deadcenter { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 4px; height: 15px; background: #00ff88;}
+    #tunerNeedle { position: absolute; bottom: 0; left: 50%; width: 4px; height: 130px; background: #ff3333; transform-origin: bottom center; transform: translateX(-50%) rotate(0deg); transition: transform 0.2s, background 0.2s;}
+
+    @media (max-width: 1000px) { .main-layout { flex-direction: column; align-items: center; } .right-panel-wrapper { flex: unset; width: 100%; max-width: 600px; } }
   </style>
 </head>
 <body>
 
-  <h1>🎸 ESP32-S3 + Gemini AI FX</h1>
-  <button id="connectBtn" onclick="connectBLE()">Koneksikan ke Pedalboard (BLE)</button>
+  <h1>🎸 ESP32-S3 Ultimate Studio Rig</h1>
+  <button id="connectBtn" class="btn-nav" onclick="connectBLE()">Koneksikan ke Pedalboard 🔌</button>
+  <p id="status">Status: Terputus</p>
   
-  <div class="main-layout">
-    
-    <div class="pedalboard">
+  <div id="effectsPage">
+    <div class="master-vol-container">
+      <label>MASTER VOLUME: <span id="mstVolLabel">50</span>%</label>
+      <input type="range" id="mstVol" min="0" max="100" value="50" oninput="updateMasterVolume(this.value)">
+    </div>
+
+    <button class="btn-nav" style="background: #ffcc00;" onclick="openTunerMode()">Buka Mode Tuner 🎸</button>
+
+    <div class="main-layout">
       
-      <div class="pedal p-od" id="pedal_OD">
-        <h3>Overdrive</h3>
-        <div class="knobs-container">
-          <div class="knob-wrapper"><div class="knob" id="knob_OD_DRV" data-cmd="OD_DRV" data-min="1" data-max="100" data-val="40"><div class="indicator"></div></div><span class="knob-label">Drive</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_OD_TONE" data-cmd="OD_TONE" data-min="0.1" data-max="0.8" data-val="0.38"><div class="indicator"></div></div><span class="knob-label">Tone</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_OD_LVL" data-cmd="OD_LVL" data-min="0" data-max="2.0" data-val="0.90"><div class="indicator"></div></div><span class="knob-label">Level</span></div>
+      <div class="pedalboard">
+        
+        <div class="category-section">
+          <h2 class="category-title">Drive & Dirt</h2>
+          <div class="category-pedals">
+            <div class="pedal p-od" id="pedal_OD"><h3>Tube OD</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_OD_DRV" data-cmd="OD_DRV" data-min="1" data-max="50" data-val="20"> <div class="indicator"></div></div><span class="knob-label">Drive</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_OD_TONE" data-cmd="OD_TONE" data-min="0.1" data-max="0.8" data-val="0.5"> <div class="indicator"></div></div><span class="knob-label">Tone</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_OD_LVL" data-cmd="OD_LVL" data-min="0" data-max="2.0" data-val="0.9"> <div class="indicator"></div></div><span class="knob-label">Level</span></div>
+              </div>
+              <div class="led" id="led_OD_ON"></div><div class="stomp-switch" onclick="toggleFxManual('OD_ON')"></div>
+            </div>
+            
+            <div class="pedal p-dist" id="pedal_DIST"><h3>Distortion</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_DIST_DRV" data-cmd="DIST_DRV" data-min="1" data-max="100" data-val="50"> <div class="indicator"></div></div><span class="knob-label">Drive</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_DIST_TONE" data-cmd="DIST_TONE" data-min="0.1" data-max="0.8" data-val="0.5"> <div class="indicator"></div></div><span class="knob-label">Tone</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_DIST_LVL" data-cmd="DIST_LVL" data-min="0" data-max="2.0" data-val="0.8"> <div class="indicator"></div></div><span class="knob-label">Level</span></div>
+              </div>
+              <div class="led" id="led_DIST_ON"></div><div class="stomp-switch" onclick="toggleFxManual('DIST_ON')"></div>
+            </div>
+            
+            <div class="pedal p-fuz" id="pedal_FUZ"><h3>Fuzz Face</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_FUZ_DRV" data-cmd="FUZ_DRV" data-min="1" data-max="100" data-val="50"> <div class="indicator"></div></div><span class="knob-label">Fuzz</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_FUZ_TONE" data-cmd="FUZ_TONE" data-min="0.1" data-max="0.8" data-val="0.3"> <div class="indicator"></div></div><span class="knob-label">Tone</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_FUZ_LVL" data-cmd="FUZ_LVL" data-min="0" data-max="2.0" data-val="0.7"> <div class="indicator"></div></div><span class="knob-label">Level</span></div>
+              </div>
+              <div class="led" id="led_FUZ_ON"></div><div class="stomp-switch" onclick="toggleFxManual('FUZ_ON')"></div>
+            </div>
+          </div>
         </div>
-        <div class="led" id="led_OD_ON"></div>
-        <div class="stomp-switch" onclick="toggleFxManual('OD_ON')"></div>
-      </div>
 
-      <div class="pedal p-dist" id="pedal_DIST">
-        <h3>Distortion</h3>
-        <div class="knobs-container">
-          <div class="knob-wrapper"><div class="knob" id="knob_DIST_LVL" data-cmd="DIST_LVL" data-min="0" data-max="2.0" data-val="0.90"><div class="indicator"></div></div><span class="knob-label">Level</span></div>
+        <div class="category-section">
+          <h2 class="category-title">Modulation & Pitch</h2>
+          <div class="category-pedals">
+            <div class="pedal p-cho" id="pedal_CHO"><h3>Chorus</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_CHO_RATE" data-cmd="CHO_RATE" data-min="0.1" data-max="5.0" data-val="0.75"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_CHO_DPTH" data-cmd="CHO_DPTH" data-min="1" data-max="50" data-val="20"><div class="indicator"></div></div><span class="knob-label">Depth</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_CHO_MIX" data-cmd="CHO_MIX" data-min="0" data-max="1.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+              </div>
+              <div class="led" id="led_CHO_ON"></div><div class="stomp-switch" onclick="toggleFxManual('CHO_ON')"></div>
+            </div>
+            
+            <div class="pedal p-flg" id="pedal_FLG"><h3>Flanger</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_FLG_RATE" data-cmd="FLG_RATE" data-min="0.1" data-max="5.0" data-val="0.35"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_FLG_FB" data-cmd="FLG_FB" data-min="0" data-max="0.95" data-val="0.75"><div class="indicator"></div></div><span class="knob-label">F.Back</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_FLG_MIX" data-cmd="FLG_MIX" data-min="0" data-max="1.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+              </div>
+              <div class="led" id="led_FLG_ON"></div><div class="stomp-switch" onclick="toggleFxManual('FLG_ON')"></div>
+            </div>
+            
+            <div class="pedal p-phs" id="pedal_PHS"><h3>Phaser</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_PHS_RATE" data-cmd="PHS_RATE" data-min="0.1" data-max="5.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_PHS_DPTH" data-cmd="PHS_DPTH" data-min="0.0" data-max="1.0" data-val="0.8"><div class="indicator"></div></div><span class="knob-label">Depth</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_PHS_FB" data-cmd="PHS_FB" data-min="0" data-max="0.95" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">F.Back</span></div>
+              </div>
+              <div class="led" id="led_PHS_ON"></div><div class="stomp-switch" onclick="toggleFxManual('PHS_ON')"></div>
+            </div>
+            
+            <div class="pedal p-trm" id="pedal_TRM"><h3>Tremolo</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_TRM_RATE" data-cmd="TRM_RATE" data-min="0.1" data-max="10.0" data-val="3.0"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_TRM_DPTH" data-cmd="TRM_DPTH" data-min="0.0" data-max="1.0" data-val="0.8"><div class="indicator"></div></div><span class="knob-label">Depth</span></div>
+              </div>
+              <div class="led" id="led_TRM_ON"></div><div class="stomp-switch" onclick="toggleFxManual('TRM_ON')"></div>
+            </div>
+            
+            <div class="pedal p-vib" id="pedal_VIB"><h3>Vibrato</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_VIB_RATE" data-cmd="VIB_RATE" data-min="0.1" data-max="10.0" data-val="4.0"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_VIB_DPTH" data-cmd="VIB_DPTH" data-min="1.0" data-max="20.0" data-val="10.0"><div class="indicator"></div></div><span class="knob-label">Depth</span></div>
+              </div>
+              <div class="led" id="led_VIB_ON"></div><div class="stomp-switch" onclick="toggleFxManual('VIB_ON')"></div>
+            </div>
+            
+            <div class="pedal p-rot" id="pedal_ROT"><h3>Rotary</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_ROT_RATE" data-cmd="ROT_RATE" data-min="0.1" data-max="10.0" data-val="4.0"><div class="indicator"></div></div><span class="knob-label">Speed</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_ROT_DPTH" data-cmd="ROT_DPTH" data-min="0.0" data-max="1.0" data-val="0.7"><div class="indicator"></div></div><span class="knob-label">Depth</span></div>
+              </div>
+              <div class="led" id="led_ROT_ON"></div><div class="stomp-switch" onclick="toggleFxManual('ROT_ON')"></div>
+            </div>
+            
+            <div class="pedal p-uni" id="pedal_UNI"><h3>Univibe</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_UNI_RATE" data-cmd="UNI_RATE" data-min="0.1" data-max="10.0" data-val="1.5"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_UNI_DPTH" data-cmd="UNI_DPTH" data-min="0.0" data-max="1.0" data-val="0.8"><div class="indicator"></div></div><span class="knob-label">Depth</span></div>
+              </div>
+              <div class="led" id="led_UNI_ON"></div><div class="stomp-switch" onclick="toggleFxManual('UNI_ON')"></div>
+            </div>
+            
+            <div class="pedal p-awh" id="pedal_AWH"><h3>Auto-Wah</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_AWH_SENS" data-cmd="AWH_SENS" data-min="0.1" data-max="2.0" data-val="0.8"><div class="indicator"></div></div><span class="knob-label">Sens</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_AWH_Q" data-cmd="AWH_Q" data-min="0.1" data-max="0.95" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Peak</span></div>
+              </div>
+              <div class="led" id="led_AWH_ON"></div><div class="stomp-switch" onclick="toggleFxManual('AWH_ON')"></div>
+            </div>
+            
+            <div class="pedal p-whm" id="pedal_WHM"><h3>Whammy</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_WHM_SHIFT" data-cmd="WHM_SHIFT" data-min="-12.0" data-max="12.0" data-val="0.0"><div class="indicator"></div></div><span class="knob-label">Pitch</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_WHM_MIX" data-cmd="WHM_MIX" data-min="0.0" data-max="1.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+              </div>
+              <div class="led" id="led_WHM_ON"></div><div class="stomp-switch" onclick="toggleFxManual('WHM_ON')"></div>
+            </div>
+          </div>
         </div>
-        <div class="led" id="led_DIST_ON"></div>
-        <div class="stomp-switch" onclick="toggleFxManual('DIST_ON')"></div>
-      </div>
 
-      <div class="pedal p-cho" id="pedal_CHO">
-        <h3>Chorus</h3>
-        <div class="knobs-container">
-          <div class="knob-wrapper"><div class="knob" id="knob_CHO_RATE" data-cmd="CHO_RATE" data-min="0.1" data-max="5.0" data-val="0.75"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_CHO_DPTH" data-cmd="CHO_DPTH" data-min="1" data-max="50" data-val="20"><div class="indicator"></div></div><span class="knob-label">Depth</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_CHO_MIX" data-cmd="CHO_MIX" data-min="0" data-max="1.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+        <div class="category-section">
+          <h2 class="category-title">Time & Space</h2>
+          <div class="category-pedals">
+            <div class="pedal p-dly" id="pedal_DLY"><h3>Delay</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_DLY_TIME" data-cmd="DLY_TIME" data-min="100" data-max="4000" data-val="2640"><div class="indicator"></div></div><span class="knob-label">Time</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_DLY_FB" data-cmd="DLY_FB" data-min="0" data-max="0.95" data-val="0.52"><div class="indicator"></div></div><span class="knob-label">Repeats</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_DLY_MIX" data-cmd="DLY_MIX" data-min="0" data-max="1.0" data-val="0.35"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+              </div>
+              <div class="led" id="led_DLY_ON"></div><div class="stomp-switch" onclick="toggleFxManual('DLY_ON')"></div>
+            </div>
+            
+            <div class="pedal p-eco" id="pedal_ECO"><h3>Tape Echo</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_ECO_TIME" data-cmd="ECO_TIME" data-min="100" data-max="4000" data-val="3000"><div class="indicator"></div></div><span class="knob-label">Time</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_ECO_FB" data-cmd="ECO_FB" data-min="0" data-max="0.95" data-val="0.6"><div class="indicator"></div></div><span class="knob-label">Repeats</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_ECO_MIX" data-cmd="ECO_MIX" data-min="0" data-max="1.0" data-val="0.4"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+              </div>
+              <div class="led" id="led_ECO_ON"></div><div class="stomp-switch" onclick="toggleFxManual('ECO_ON')"></div>
+            </div>
+            
+            <div class="pedal p-rev" id="pedal_REV"><h3>Reverb</h3>
+              <div class="knobs-container">
+                <div class="knob-wrapper"><div class="knob" id="knob_REV_DEC" data-cmd="REV_DEC" data-min="0.1" data-max="0.95" data-val="0.62"><div class="indicator"></div></div><span class="knob-label">Decay</span></div>
+                <div class="knob-wrapper"><div class="knob" id="knob_REV_MIX" data-cmd="REV_MIX" data-min="0" data-max="1.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+              </div>
+              <div class="led" id="led_REV_ON"></div><div class="stomp-switch" onclick="toggleFxManual('REV_ON')"></div>
+            </div>
+          </div>
         </div>
-        <div class="led" id="led_CHO_ON"></div>
-        <div class="stomp-switch" onclick="toggleFxManual('CHO_ON')"></div>
-      </div>
-
-      <div class="pedal p-flg" id="pedal_FLG">
-        <h3>Flanger</h3>
-        <div class="knobs-container">
-          <div class="knob-wrapper"><div class="knob" id="knob_FLG_RATE" data-cmd="FLG_RATE" data-min="0.1" data-max="5.0" data-val="0.35"><div class="indicator"></div></div><span class="knob-label">Rate</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_FLG_FB" data-cmd="FLG_FB" data-min="0" data-max="0.95" data-val="0.75"><div class="indicator"></div></div><span class="knob-label">F.Back</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_FLG_MIX" data-cmd="FLG_MIX" data-min="0" data-max="1.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+        
+      </div> <div class="right-panel-wrapper">
+        <div class="ai-panel">
+          <h2>🤖 AI Tone Studio (Groq LLaMA)</h2>
+          <div class="status-text" id="aiStatus">AI otomatis membaca setingan ini dan memolesnya sesuai referensimu.</div>
+          <div class="input-row">
+            <input type="text" id="aiPrompt" placeholder="Cth: Suara clean John Mayer">
+            <button id="aiBtn" onclick="generateTone()">Kirim</button>
+          </div>
         </div>
-        <div class="led" id="led_FLG_ON"></div>
-        <div class="stomp-switch" onclick="toggleFxManual('FLG_ON')"></div>
-      </div>
 
-      <div class="pedal p-dly" id="pedal_DLY">
-        <h3>Delay</h3>
-        <div class="knobs-container">
-          <div class="knob-wrapper"><div class="knob" id="knob_DLY_TIME" data-cmd="DLY_TIME" data-min="100" data-max="4000" data-val="2640"><div class="indicator"></div></div><span class="knob-label">Time</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_DLY_FB" data-cmd="DLY_FB" data-min="0" data-max="0.95" data-val="0.52"><div class="indicator"></div></div><span class="knob-label">Repeats</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_DLY_MIX" data-cmd="DLY_MIX" data-min="0" data-max="1.0" data-val="0.35"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
+        <div class="eq-panel">
+          <h3>12-Band Pre-EQ</h3>
+          <div class="eq-sliders" id="eqContainer"></div>
         </div>
-        <div class="led" id="led_DLY_ON"></div>
-        <div class="stomp-switch" onclick="toggleFxManual('DLY_ON')"></div>
       </div>
-
-      <div class="pedal p-rev" id="pedal_REV">
-        <h3>Reverb</h3>
-        <div class="knobs-container">
-          <div class="knob-wrapper"><div class="knob" id="knob_REV_DEC" data-cmd="REV_DEC" data-min="0.1" data-max="0.95" data-val="0.62"><div class="indicator"></div></div><span class="knob-label">Decay</span></div>
-          <div class="knob-wrapper"><div class="knob" id="knob_REV_MIX" data-cmd="REV_MIX" data-min="0" data-max="1.0" data-val="0.5"><div class="indicator"></div></div><span class="knob-label">Mix</span></div>
-        </div>
-        <div class="led" id="led_REV_ON"></div>
-        <div class="stomp-switch" onclick="toggleFxManual('REV_ON')"></div>
-      </div>
-
     </div>
+  </div>
 
-    <div class="ai-panel">
-      <h2>🤖 AI Tone Studio</h2>
-      <div class="status-text" id="aiStatus">Ketikkan referensi tone yang kamu mau, biar AI yang atur pedalnya.</div>
-      <div class="input-row">
-        <input type="text" id="aiPrompt" placeholder="Cth: Solo rock ala Slash...">
-        <button id="aiBtn" onclick="generateTone()">Kirim</button>
+  <div id="tunerPage" style="display: none;">
+    <button class="btn-nav" style="background: #ff3333; color: white;" onclick="closeTunerMode()">↩️ Kembali Ke Mode Efek</button>
+    <div class="tuner-container">
+      <h3 style="margin-top: 0; color: #aaa;">CHROMATIC TUNER</h3>
+      <div id="noteDisplay">--</div>
+      <div id="freqDisplay">0.00 Hz</div>
+      <div class="gauge-wrapper">
+        <div class="gauge-arc"></div><div class="gauge-deadcenter"></div><div id="tunerNeedle"></div>
       </div>
+      <p id="tunerStatus" style="color: #666; margin-top: 20px;">Petik senar untuk menyetem...</p>
     </div>
-
   </div>
 
   <script>
-    // =======================================================
-    // CONFIGURATION (Hardcoded API Key)
-    // =======================================================
-    const GEMINI_API_KEY = "API_KEY"; 
+    const eqFrequencies = [40, 80, 120, 200, 300, 450, 600, 900, 1400, 2000, 2800, 3500];
+
+    function initUI() {
+      const eqContainer = document.getElementById('eqContainer');
+      eqFrequencies.forEach((freq, index) => {
+        let bandNum = index + 1;
+        eqContainer.innerHTML += `<div class="eq-band"><span class="eq-val-display" id="eqVal_${bandNum}">0</span><input type="range" class="eq-slider" id="eqSlider_${bandNum}" min="-12" max="12" step="0.5" value="0" oninput="updateEQ(${bandNum}, this.value)"><span class="eq-label">${freq >= 1000 ? (freq/1000)+'k' : freq}</span></div>`;
+      });
+    }
+    initUI();
 
     // =======================================================
     // BLE LOGIC
     // =======================================================
     const serviceUuid = "19b10000-e8f2-537e-4f6c-d104768a1214";
     const characteristicUuid = "19b10001-e8f2-537e-4f6c-d104768a1214";
-    let bleCharacteristic = null;
-    let cmdQueue = {};
-    let isSending = false;
-    let fxStates = { OD_ON: false, DIST_ON: false, CHO_ON: false, FLG_ON: false, DLY_ON: false, REV_ON: false };
+    let bleCharacteristic = null, cmdQueue = {}, isSending = false;
+    
+    let fxStates = { OD_ON:false, DIST_ON:false, FUZ_ON:false, CHO_ON:false, FLG_ON:false, PHS_ON:false, TRM_ON:false, VIB_ON:false, ROT_ON:false, UNI_ON:false, AWH_ON:false, WHM_ON:false, DLY_ON:false, ECO_ON:false, REV_ON:false };
 
     async function connectBLE() {
+      const statusText = document.getElementById("status");
       try {
-        const device = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'ESP32_Guitar_FX' }],
-          optionalServices: [serviceUuid]
-        });
+        statusText.innerText = "Mencari perangkat...";
+        const device = await navigator.bluetooth.requestDevice({ filters: [{ name: 'ESP32_Guitar_FX' }], optionalServices: [serviceUuid] });
         const server = await device.gatt.connect();
         const service = await server.getPrimaryService(serviceUuid);
         bleCharacteristic = await service.getCharacteristic(characteristicUuid);
         
-        document.getElementById("connectBtn").innerText = "BLE Connected!";
-        document.getElementById("connectBtn").style.background = "#00ccff";
+        document.getElementById("connectBtn").innerText = "BLE Connected!"; document.getElementById("connectBtn").style.background = "#00ccff";
+        statusText.innerText = "✅ Terhubung ke ESP32-S3 Rig"; statusText.style.color = "#00ff88";
+
+        await bleCharacteristic.startNotifications();
+        bleCharacteristic.addEventListener('characteristicvaluechanged', handleIncomingBleData);
         setInterval(processQueue, 50);
-      } catch (error) {
-        alert("Gagal koneksi BLE. Pastikan ESP32 nyala dan browser mensupport Web BLE.");
-      }
+      } catch (error) { statusText.innerText = "❌ Gagal Terhubung."; statusText.style.color = "#ff3333"; }
     }
 
     function sendCommand(cmd, val) { cmdQueue[cmd] = val; }
-
     async function processQueue() {
-      if (!bleCharacteristic || isSending) return;
-      let keys = Object.keys(cmdQueue);
-      if (keys.length === 0) return;
-
-      isSending = true;
-      let cmd = keys[0];
-      let val = cmdQueue[cmd];
-      delete cmdQueue[cmd];
-
-      let payload = cmd + ":" + val;
-      let encoder = new TextEncoder();
-      try {
-        await bleCharacteristic.writeValue(encoder.encode(payload));
-      } catch (e) { console.error("BLE Write error", e); }
+      if (!bleCharacteristic || isSending || Object.keys(cmdQueue).length===0) return;
+      isSending = true; let cmd = Object.keys(cmdQueue)[0]; let val = cmdQueue[cmd]; delete cmdQueue[cmd];
+      try { await bleCharacteristic.writeValue(new TextEncoder().encode(cmd + ":" + val)); } catch (e) { }
       isSending = false;
     }
 
+    function updateMasterVolume(val) { document.getElementById('mstVolLabel').innerText = val; sendCommand("MST_VOL", (val / 100).toFixed(2)); }
+    function updateEQ(band, val) { document.getElementById('eqVal_' + band).innerText = (val > 0 ? "+" : "") + val; sendCommand("EQ_" + band, val); }
+
     // =======================================================
-    // UI LOGIC (Knobs & Switches - MOBILE & DESKTOP)
+    // RECEIVE DATA FROM ESP32
     // =======================================================
-    function toggleFxManual(fxId) {
-      fxStates[fxId] = !fxStates[fxId];
-      setFxStateVisual(fxId, fxStates[fxId]);
-      sendCommand(fxId, fxStates[fxId] ? 1 : 0);
-    }
+    let tunerHoldTimer = null;
+    const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-    function setFxStateVisual(fxId, isOn) {
-      fxStates[fxId] = isOn;
-      let led = document.getElementById("led_" + fxId);
-      if(isOn) led.classList.add("active");
-      else led.classList.remove("active");
-    }
-
-    function updateKnobVisual(knob, val) {
-      let min = parseFloat(knob.getAttribute('data-min'));
-      let max = parseFloat(knob.getAttribute('data-max'));
-      let percent = (val - min) / (max - min);
-      let deg = -135 + (percent * 270);
-      knob.style.transform = `rotate(${deg}deg)`;
-      knob.setAttribute('data-val', val);
-    }
-
-    let activeKnob = null, startY = 0, currentVal = 0;
-
-    // Fungsi Mulai Interaksi
-    function startInteraction(knob, yPos) {
-      activeKnob = knob; 
-      startY = yPos;
-      currentVal = parseFloat(knob.getAttribute('data-val'));
-      document.body.style.cursor = 'ns-resize';
-    }
-
-    // Fungsi Bergerak
-    function moveInteraction(yPos) {
-      if (!activeKnob) return;
-      let deltaY = startY - yPos;
-      let min = parseFloat(activeKnob.getAttribute('data-min'));
-      let max = parseFloat(activeKnob.getAttribute('data-max'));
-      let step = (max - min) / 200;
-      let newVal = Math.max(min, Math.min(max, currentVal + (deltaY * step)));
-
-      updateKnobVisual(activeKnob, newVal);
-      sendCommand(activeKnob.getAttribute('data-cmd'), newVal.toFixed(2));
-    }
-
-    // Fungsi Selesai Interaksi
-    function endInteraction() { 
-      activeKnob = null; 
-      document.body.style.cursor = 'default'; 
-    }
-
-    // Pasang Event Listeners ke semua Knob
-    document.querySelectorAll('.knob').forEach(knob => {
-      updateKnobVisual(knob, parseFloat(knob.getAttribute('data-val')));
-      
-      // Event Mouse (Desktop)
-      knob.addEventListener('mousedown', (e) => startInteraction(knob, e.clientY));
-      
-      // Event Touch (Mobile)
-      knob.addEventListener('touchstart', (e) => {
-        // e.preventDefault() tidak selalu diperlukan karena ada CSS touch-action, 
-        // tapi baik untuk mencegah perilaku default spesifik di beberapa browser.
-        startInteraction(knob, e.touches[0].clientY);
-      }, {passive: false});
-    });
-
-    // Global Listeners
-    window.addEventListener('mousemove', (e) => moveInteraction(e.clientY));
-    window.addEventListener('mouseup', endInteraction);
-
-    window.addEventListener('touchmove', (e) => {
-      if (activeKnob) {
-        e.preventDefault(); // Mengunci scroll saat knob sedang diputar
-        moveInteraction(e.touches[0].clientY);
+    function handleIncomingBleData(event) {
+      const message = new TextDecoder().decode(event.target.value);
+      if (message.startsWith("FREQ:")) {
+        const freq = parseFloat(message.split(":")[1]);
+        if (freq >= 20 && freq <= 1000) { updateTunerUI(freq); clearTimeout(tunerHoldTimer); tunerHoldTimer = setTimeout(() => { resetTunerUI(); }, 800); }
+      } else if (message.startsWith("AI_STATUS:")) {
+        const statusElement = document.getElementById("aiStatus");
+        const statusMsg = message.substring(10);
+        statusElement.innerText = statusMsg;
+        if (statusMsg.includes("✅") || statusMsg.includes("❌")) { 
+            statusElement.style.color = statusMsg.includes("✅") ? "#00ff88" : "#ff3333"; 
+            document.getElementById("aiBtn").disabled = false; 
+        } else { statusElement.style.color = "#aaa"; }
+      } else if (message.startsWith("SYNC:")) {
+         let parts = message.split(":"); applySyncFromESP(parts[1], parseFloat(parts[2]));
       }
-    }, {passive: false});
-    window.addEventListener('touchend', endInteraction);
+    }
 
-    function setKnobValue(cmd, val) {
-      let knob = document.getElementById("knob_" + cmd);
-      if(knob) {
-        updateKnobVisual(knob, val);
-        sendCommand(cmd, val.toFixed(2));
+    function applySyncFromESP(key, val) {
+      if (Object.keys(fxStates).includes(key)) {
+         setFxStateVisual(key, val > 0.5);
+      } else if (key.startsWith("EQ_")) {
+         let bandNum = key.split("_")[1]; let slider = document.getElementById('eqSlider_' + bandNum);
+         if(slider) { slider.value = val; document.getElementById('eqVal_' + bandNum).innerText = (val > 0 ? "+" : "") + val; }
+      } else if (key === "MST_VOL") {
+         let percent = Math.round(val * 100); document.getElementById('mstVol').value = percent; document.getElementById('mstVolLabel').innerText = percent;
+      } else {
+         let knob = document.getElementById("knob_" + key);
+         if(knob) {
+            let min = parseFloat(knob.getAttribute('data-min')); let max = parseFloat(knob.getAttribute('data-max'));
+            let deg = -135 + (((val - min) / (max - min)) * 270);
+            
+            // FITUR BARU: Berikan transisi animasi berputar yang sangat mulus khas hardware mahal
+            knob.style.transition = "transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)";
+            
+            knob.style.transform = `rotate(${deg}deg)`; knob.setAttribute('data-val', val);
+         }
       }
     }
 
     // =======================================================
-    // GEMINI AI LOGIC
+    // TUNER LOGIC UI
+    // =======================================================
+    function openTunerMode() { document.getElementById("effectsPage").style.display = "none"; document.getElementById("tunerPage").style.display = "flex"; sendCommand("TUNER_MODE", 1); }
+    function closeTunerMode() { document.getElementById("tunerPage").style.display = "none"; document.getElementById("effectsPage").style.display = "flex"; sendCommand("TUNER_MODE", 0); resetTunerUI(); }
+    
+    function updateTunerUI(freq) {
+      document.getElementById("freqDisplay").innerText = freq.toFixed(2) + " Hz";
+      const a4 = 440.0; let hs = Math.round(12 * Math.log2(freq / a4)); let cFreq = a4 * Math.pow(2, hs / 12);
+      let nIdx = (hs + 9) % 12; if (nIdx < 0) nIdx += 12; let oct = 4 + Math.floor((hs + 9) / 12);
+      document.getElementById("noteDisplay").innerText = NOTE_NAMES[nIdx] + oct;
+      let cents = 1200 * Math.log2(freq / cFreq); let needle = document.getElementById("tunerNeedle");
+      needle.style.transform = `translateX(-50%) rotate(${(Math.max(-50, Math.min(50, cents)) / 50) * 45}deg)`;
+      let color = Math.abs(cents) <= 3.0 ? "#00ff88" : (cents < 0 ? "#ffcc00" : "#ff3333");
+      document.getElementById("noteDisplay").style.color = color; needle.style.background = color;
+      document.getElementById("tunerStatus").innerText = Math.abs(cents) <= 3.0 ? "✓ PAS (IN TUNE)" : (cents < 0 ? "Kurang Kencang (FLAT)" : "Terlalu Kencang (SHARP)");
+      document.getElementById("tunerStatus").style.color = color;
+    }
+    function resetTunerUI() { document.getElementById("noteDisplay").innerText = "--"; document.getElementById("freqDisplay").innerText = "0.00 Hz"; document.getElementById("tunerNeedle").style.transform = "translateX(-50%) rotate(0deg)"; }
+
+    // =======================================================
+    // PEDALS KNOB LOGIC
+    // =======================================================
+    function toggleFxManual(fxId) { fxStates[fxId] = !fxStates[fxId]; setFxStateVisual(fxId, fxStates[fxId]); sendCommand(fxId, fxStates[fxId] ? 1 : 0); }
+    function setFxStateVisual(fxId, isOn) { fxStates[fxId] = isOn; let led = document.getElementById("led_" + fxId); if(isOn) led.classList.add("active"); else led.classList.remove("active"); }
+    function updateKnobVisual(k, v) { let mn=parseFloat(k.getAttribute('data-min')), mx=parseFloat(k.getAttribute('data-max')); k.style.transform=`rotate(${-135+(((v-mn)/(mx-mn))*270)}deg)`; k.setAttribute('data-val', v); }
+    let aK = null, sY = 0, cV = 0;
+    
+    // FITUR BARU: Matikan animasi saat diputar manual dengan mouse/jari agar zero-latency responsif!
+    function sI(k, y) { aK = k; sY = y; cV = parseFloat(k.getAttribute('data-val')); document.body.style.cursor = 'ns-resize'; k.style.transition = 'none'; }
+    
+    function mI(y) { if(!aK) return; let mn=parseFloat(aK.getAttribute('data-min')), mx=parseFloat(aK.getAttribute('data-max')), nV=Math.max(mn, Math.min(mx, cV + ((sY-y)*((mx-mn)/200)))); updateKnobVisual(aK, nV); sendCommand(aK.getAttribute('data-cmd'), nV.toFixed(2)); }
+    function eI() { aK = null; document.body.style.cursor = 'default'; }
+    
+    document.querySelectorAll('.knob').forEach(k => { updateKnobVisual(k, parseFloat(k.getAttribute('data-val'))); k.addEventListener('mousedown', (e) => sI(k, e.clientY)); k.addEventListener('touchstart', (e) => { sI(k, e.touches[0].clientY); }, {passive: false}); });
+    window.addEventListener('mousemove', (e) => mI(e.clientY)); window.addEventListener('mouseup', eI);
+    window.addEventListener('touchmove', (e) => { if (aK) { e.preventDefault(); mI(e.touches[0].clientY); } }, {passive: false}); window.addEventListener('touchend', eI);
+
+    // =======================================================
+    // AI SEND PROMPT VIA BLUETOOTH
     // =======================================================
     async function generateTone() {
-      const promptText = document.getElementById("aiPrompt").value.trim();
-      const statusElement = document.getElementById("aiStatus");
-      const btn = document.getElementById("aiBtn");
-
-      if (GEMINI_API_KEY === "MASUKKAN_API_KEY_KAMU_DI_SINI" || GEMINI_API_KEY === "") {
-        alert("Jangan lupa ubah variabel GEMINI_API_KEY di dalam kode HTML-nya terlebih dahulu!");
-        return;
-      }
-
-      if (!promptText) {
-        alert("Harap masukkan deskripsi tone!");
-        return;
-      }
-
-      btn.disabled = true;
-      statusElement.innerText = "⏳ Sedang mendengarkan & meracik tone...";
-      statusElement.style.color = "#aaa";
-
-      const systemInstruction = `
-Kamu adalah seorang Audio Engineer ahli. Tugasmu adalah mengatur pedalboard efek gitar berdasarkan permintaan user.
-Output yang kamu hasilkan HARUS HANYA berupa JSON valid TANPA markdown formatting, TANPA backticks, dan TANPA teks penjelasan apapun. 
-
-Berikut adalah parameter dan range-nya:
-- OD_ON (bool), OD_DRV (1.0-100.0), OD_TONE (0.1-0.8), OD_LVL (0.0-2.0)
-- DIST_ON (bool), DIST_LVL (0.0-2.0)
-- CHO_ON (bool), CHO_RATE (0.1-5.0), CHO_DPTH (1.0-50.0), CHO_MIX (0.0-1.0)
-- FLG_ON (bool), FLG_RATE (0.1-5.0), FLG_FB (0.0-0.95), FLG_MIX (0.0-1.0)
-- DLY_ON (bool), DLY_TIME (100.0-4000.0 ms), DLY_FB (0.0-0.95), DLY_MIX (0.0-1.0)
-- REV_ON (bool), REV_DEC (0.1-0.95), REV_MIX (0.0-1.0)
-
-Format JSON wajib seperti ini:
-{
-  "OD_ON": false, "OD_DRV": 40.0, "OD_TONE": 0.38, "OD_LVL": 0.9,
-  "DIST_ON": false, "DIST_LVL": 0.9,
-  "CHO_ON": false, "CHO_RATE": 0.75, "CHO_DPTH": 20.0, "CHO_MIX": 0.5,
-  "FLG_ON": false, "FLG_RATE": 0.35, "FLG_FB": 0.75, "FLG_MIX": 0.5,
-  "DLY_ON": false, "DLY_TIME": 2640.0, "DLY_FB": 0.52, "DLY_MIX": 0.35,
-  "REV_ON": false, "REV_DEC": 0.62, "REV_MIX": 0.5
-}`;
-
-      try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemInstruction }] },
-            contents: [{ parts: [{ text: `Permintaan tone user: "${promptText}". Berikan konfigurasi JSON-nya.` }] }],
-            generationConfig: { response_mime_type: "application/json" }
-          })
-        });
-
-        const data = await response.json();
-        
-        if (data.error) throw new Error(data.error.message);
-
-        const aiResponseText = data.candidates[0].content.parts[0].text;
-        const config = JSON.parse(aiResponseText);
-
-        applyAiConfiguration(config);
-        
-        statusElement.innerText = `✅ Tone untuk "${promptText}" berhasil diterapkan!`;
-        statusElement.style.color = "#00ff88";
-
-      } catch (error) {
-        console.error("AI Error:", error);
-        statusElement.innerText = "❌ Gagal generate tone. Cek console log.";
-        statusElement.style.color = "#ff3333";
-      } finally {
-        btn.disabled = false;
-      }
+      const p = document.getElementById("aiPrompt").value.trim(), s = document.getElementById("aiStatus"), b = document.getElementById("aiBtn");
+      if (!bleCharacteristic) { alert("Hubungkan Bluetooth!"); return; } if (!p) { alert("Masukkan prompt!"); return; }
+      b.disabled = true; s.innerText = "⏳ Mengirim request ke ESP32..."; s.style.color = "#aaa";
+      try { await bleCharacteristic.writeValue(new TextEncoder().encode("PROMPT:" + p)); } catch (e) { s.innerText = "❌ Gagal koneksi BLE"; s.style.color = "#ff3333"; b.disabled = false; }
     }
-
-    function applyAiConfiguration(config) {
-      const switches = ["OD_ON", "DIST_ON", "CHO_ON", "FLG_ON", "DLY_ON", "REV_ON"];
-      switches.forEach(sw => {
-        if(config.hasOwnProperty(sw)) {
-          setFxStateVisual(sw, config[sw]);
-          sendCommand(sw, config[sw] ? 1 : 0);
-        }
-      });
-
-      for (const [key, value] of Object.entries(config)) {
-        if (!switches.includes(key)) {
-          setKnobValue(key, parseFloat(value));
-        }
-      }
-    }
-
-    // Trigger enter key pada input
-    document.getElementById("aiPrompt").addEventListener("keypress", function(event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        document.getElementById("aiBtn").click();
-      }
-    });
+    document.getElementById("aiPrompt").addEventListener("keypress", (e) => { if (e.key === "Enter") { e.preventDefault(); document.getElementById("aiBtn").click(); } });
   </script>
 </body>
 </html>
